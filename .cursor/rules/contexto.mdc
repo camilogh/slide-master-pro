@@ -1,3 +1,6 @@
+---
+alwaysApply: true
+---
 
 ## 🎨 PowerPoint Generator App — Plan de implementación
 
@@ -89,4 +92,3 @@ El usuario puede navegar hacia atrás para ajustar configuraciones anteriores si
 - **xlsx** (SheetJS) para lectura del Excel en el navegador
 - **react-dnd** o similar para el drag & drop del canvas
 - Todo funciona 100% en el navegador, sin backend ni servidor
-

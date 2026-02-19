@@ -4,7 +4,9 @@ import { Step2 } from '@/components/steps/Step2';
 import { Step3 } from '@/components/steps/Step3';
 import { Step4 } from '@/components/steps/Step4';
 import { cn } from '@/lib/utils';
-import { Check } from 'lucide-react';
+import { Check, Sun, Moon } from 'lucide-react';
+import { Switch } from '@/components/ui/switch';
+import { useTheme } from 'next-themes';
 
 const STEPS = [
   { number: 1, label: 'Dimensiones & Fondo' },
@@ -15,16 +17,27 @@ const STEPS = [
 
 export const Wizard = () => {
   const { currentStep, setCurrentStep } = useApp();
+  const { resolvedTheme, setTheme } = useTheme();
 
   return (
     <div className="min-h-screen bg-background">
       {/* Header */}
       <header className="border-b border-border bg-card sticky top-0 z-10">
-        <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center gap-4">
-          <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
-            <span className="text-primary-foreground font-bold text-sm">PP</span>
+        <div className="max-w-screen-xl mx-auto px-6 py-4 flex items-center justify-between gap-4">
+          <div className="flex items-center gap-4">
+            <div className="w-8 h-8 rounded-lg bg-primary flex items-center justify-center shrink-0">
+              <span className="text-primary-foreground font-bold text-sm">PP</span>
+            </div>
+            <h1 className="font-semibold text-foreground">PowerPoint Generator</h1>
           </div>
-          <h1 className="font-semibold text-foreground">PowerPoint Generator</h1>
+          <div className="flex items-center gap-2">
+            <Sun className="w-4 h-4 text-muted-foreground" />
+            <Switch
+              checked={resolvedTheme === 'dark'}
+              onCheckedChange={(checked) => setTheme(checked ? 'dark' : 'light')}
+            />
+            <Moon className="w-4 h-4 text-muted-foreground" />
+          </div>
         </div>
       </header>
 

@@ -10,6 +10,7 @@ interface AppContextValue extends AppState {
   addCanvasElement: (el: CanvasElement) => void;
   updateCanvasElement: (id: string, updates: Partial<CanvasElement>) => void;
   removeCanvasElement: (id: string) => void;
+  setCanvasElements: (elements: CanvasElement[]) => void;
   setCurrentStep: (step: number) => void;
 }
 
@@ -54,6 +55,9 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
   const removeCanvasElement = (id: string) =>
     setState(s => ({ ...s, canvasElements: s.canvasElements.filter(el => el.id !== id) }));
 
+  const setCanvasElements = (canvasElements: CanvasElement[]) =>
+    setState(s => ({ ...s, canvasElements }));
+
   const setCurrentStep = (currentStep: number) =>
     setState(s => ({ ...s, currentStep }));
 
@@ -68,6 +72,7 @@ export const AppProvider = ({ children }: { children: ReactNode }) => {
       addCanvasElement,
       updateCanvasElement,
       removeCanvasElement,
+      setCanvasElements,
       setCurrentStep,
     }}>
       {children}

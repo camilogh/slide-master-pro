@@ -8,22 +8,28 @@ import { ScrollArea } from '@/components/ui/scroll-area';
 import {
   ChevronLeft, ChevronRight, Type, Image as ImageIcon,
   Plus, Trash2, AlignLeft, AlignCenter, AlignRight, Bold, Italic,
-  Move
+  Move, Download, Upload
 } from 'lucide-react';
+import { exportDesignToJson, importDesignFromJson, isValidDesignJson } from '@/lib/designJson';
+import { getSnapPoints, applySnapPosition } from '@/lib/snap';
 import { cn } from '@/lib/utils';
 
 // Canvas pixel dimensions for display
 const CANVAS_PX = 900;
+const SNAP_THRESHOLD_CM = 0.3;
 
 export const Step3 = () => {
   const {
     dimensions, backgroundImage, variables, uploadedImages, excelData,
     canvasElements, addCanvasElement, updateCanvasElement, removeCanvasElement,
-    setCurrentStep,
+    setCanvasElements, setDimensions, setCurrentStep,
   } = useApp();
 
   const [selectedId, setSelectedId] = useState<string | null>(null);
+  const [importError, setImportError] = useState<string | null>(null);
   const [draggingFromPanel, setDraggingFromPanel] = useState<string | null>(null);
+  const [snapEnabled, setSnapEnabled] = useState(true);
+  const [snapGuide, setSnapGuide] = useState<{ x: number | null; y: number | null }>({ x: null, y: null });
   const canvasRef = useRef<HTMLDivElement>(null);
 
   // Scale factor: canvas pixels per cm
@@ -92,27 +98,42 @@ export const Step3 = () => {
     setDraggingFromPanel(null);
   };
 
-  // ── Drag canvas elements ─────────────────────────────────────────
-  const draggingElRef = useRef<{ id: string; startX: number; startY: number; elX: number; elY: number } | null>(null);
+  // ── Drag canvas elements (con snapping) ───────────────────────────
+  const draggingElRef = useRef<{ id: string; startX: number; startY: number; elX: number; elY: number; elW: number; elH: number } | null>(null);
 
   const handleElementMouseDown = (e: React.MouseEvent, id: string) => {
     e.stopPropagation();
     setSelectedId(id);
     const el = canvasElements.find(c => c.id === id);
     if (!el || !canvasRef.current) return;
-    draggingElRef.current = { id, startX: e.clientX, startY: e.clientY, elX: el.x, elY: el.y };
+    draggingElRef.current = {
+      id, startX: e.clientX, startY: e.clientY,
+      elX: el.x, elY: el.y, elW: el.width, elH: el.height,
+    };
 
     const onMove = (ev: MouseEvent) => {
       if (!draggingElRef.current) return;
-      const dx = pxToCm(ev.clientX - draggingElRef.current.startX);
-      const dy = pxToCm(ev.clientY - draggingElRef.current.startY);
-      updateCanvasElement(id, {
-        x: Math.max(0, draggingElRef.current.elX + dx),
-        y: Math.max(0, draggingElRef.current.elY + dy),
-      });
+      const { elX, elY, elW, elH } = draggingElRef.current;
+      let newX = Math.max(0, elX + pxToCm(ev.clientX - draggingElRef.current.startX));
+      let newY = Math.max(0, elY + pxToCm(ev.clientY - draggingElRef.current.startY));
+      newX = Math.min(dimensions.width - elW, newX);
+      newY = Math.min(dimensions.height - elH, newY);
+
+      if (snapEnabled) {
+        const points = getSnapPoints(canvasElements, dimensions, id);
+        const result = applySnapPosition(newX, newY, points, SNAP_THRESHOLD_CM);
+        newX = result.x;
+        newY = result.y;
+        setSnapGuide({ x: result.snapX, y: result.snapY });
+      } else {
+        setSnapGuide({ x: null, y: null });
+      }
+
+      updateCanvasElement(id, { x: newX, y: newY });
     };
     const onUp = () => {
       draggingElRef.current = null;
+      setSnapGuide({ x: null, y: null });
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
@@ -120,13 +141,14 @@ export const Step3 = () => {
     window.addEventListener('mouseup', onUp);
   };
 
-  // ── Resize handles ───────────────────────────────────────────────
+  // ── Resize handles (con snapping en esquinas) ──────────────────────
   const handleResizeMouseDown = (e: React.MouseEvent, id: string, corner: string) => {
     e.stopPropagation();
     const el = canvasElements.find(c => c.id === id);
     if (!el) return;
     const startX = e.clientX, startY = e.clientY;
     const startW = el.width, startH = el.height;
+    const startElX = el.x, startElY = el.y;
 
     const onMove = (ev: MouseEvent) => {
       const dw = pxToCm(ev.clientX - startX);
@@ -137,9 +159,39 @@ export const Step3 = () => {
         const ratio = startW / startH;
         newH = newW / ratio;
       }
-      updateCanvasElement(id, { width: newW, height: newH });
+      let newX = startElX;
+      let newY = startElY;
+      if (corner.includes('w')) newX = startElX + startW - newW;
+      if (corner.includes('n')) newY = startElY + startH - newH;
+      newX = Math.max(0, newX);
+      newY = Math.max(0, newY);
+      newW = Math.max(1, newW);
+      newH = Math.max(0.5, newH);
+
+      if (snapEnabled) {
+        const points = getSnapPoints(canvasElements, dimensions, id);
+        const movingLeft = corner.includes('w');
+        const movingTop = corner.includes('n');
+        const edgeX = movingLeft ? newX : newX + newW;
+        const edgeY = movingTop ? newY : newY + newH;
+        const result = applySnapPosition(edgeX, edgeY, points, SNAP_THRESHOLD_CM);
+        if (result.snapX != null) {
+          if (movingLeft) newX = result.snapX;
+          else newW = Math.max(1, result.snapX - newX);
+        }
+        if (result.snapY != null) {
+          if (movingTop) newY = result.snapY;
+          else newH = Math.max(0.5, result.snapY - newY);
+        }
+        setSnapGuide({ x: result.snapX, y: result.snapY });
+      } else {
+        setSnapGuide({ x: null, y: null });
+      }
+
+      updateCanvasElement(id, { x: newX, y: newY, width: newW, height: newH });
     };
     const onUp = () => {
+      setSnapGuide({ x: null, y: null });
       window.removeEventListener('mousemove', onMove);
       window.removeEventListener('mouseup', onUp);
     };
@@ -157,6 +209,44 @@ export const Step3 = () => {
   };
 
   const FONTS = ['Arial', 'Times New Roman', 'Helvetica', 'Georgia', 'Courier New', 'Verdana', 'Calibri'];
+
+  // ── Export / Import diseño JSON ───────────────────────────────────────
+  const handleExportDesign = () => {
+    const json = exportDesignToJson(dimensions, canvasElements, variables);
+    const blob = new Blob([JSON.stringify(json, null, 2)], { type: 'application/json' });
+    const url = URL.createObjectURL(blob);
+    const a = document.createElement('a');
+    a.href = url;
+    a.download = 'diseno_presentacion.json';
+    a.click();
+    URL.revokeObjectURL(url);
+  };
+
+  const handleImportDesign = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    e.target.value = '';
+    setImportError(null);
+    if (!file) return;
+    if (variables.length === 0) {
+      setImportError('Completa el paso 2 (Datos Excel) antes de importar un diseño.');
+      return;
+    }
+    file.text().then((text) => {
+      try {
+        const obj = JSON.parse(text);
+        if (!isValidDesignJson(obj)) {
+          setImportError('El archivo JSON no tiene un formato válido de diseño.');
+          return;
+        }
+        const { dimensions: d, canvasElements: els } = importDesignFromJson(obj, variables);
+        setDimensions(d);
+        setCanvasElements(els);
+        setSelectedId(null);
+      } catch {
+        setImportError('Error al leer el archivo JSON.');
+      }
+    }).catch(() => setImportError('Error al leer el archivo.'));
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -194,12 +284,46 @@ export const Step3 = () => {
               </div>
             </div>
           </ScrollArea>
+
+          <div className="space-y-2 pt-2 border-t border-border">
+            <h3 className="text-sm font-semibold text-foreground">Diseño JSON</h3>
+            <div className="flex flex-col gap-2">
+              <Button variant="outline" size="sm" className="gap-2 w-full" onClick={handleExportDesign} disabled={canvasElements.length === 0}>
+                <Download className="w-4 h-4" /> Exportar diseño
+              </Button>
+              <label className="cursor-pointer block">
+                <input
+                  type="file"
+                  accept=".json,application/json"
+                  className="sr-only"
+                  onChange={handleImportDesign}
+                />
+                <span className="inline-flex h-9 w-full items-center justify-center gap-2 rounded-md border border-input bg-background px-4 py-2 text-sm font-medium ring-offset-background transition-colors hover:bg-accent hover:text-accent-foreground">
+                  <Upload className="w-4 h-4" /> Importar diseño
+                </span>
+              </label>
+            </div>
+            {importError && (
+              <p className="text-xs text-destructive">{importError}</p>
+            )}
+          </div>
         </div>
 
         {/* Canvas */}
         <div className="flex flex-col gap-1">
-          <div className="text-xs text-muted-foreground text-center">
-            Canvas — {dimensions.width} × {dimensions.height} cm
+          <div className="flex items-center justify-center gap-4">
+            <span className="text-xs text-muted-foreground">
+              Canvas — {dimensions.width} × {dimensions.height} cm
+            </span>
+            <label className="flex items-center gap-2 text-xs cursor-pointer">
+              <input
+                type="checkbox"
+                checked={snapEnabled}
+                onChange={(e) => setSnapEnabled(e.target.checked)}
+                className="rounded"
+              />
+              <span className="text-muted-foreground">Snapping</span>
+            </label>
           </div>
           <div
             ref={canvasRef}
@@ -227,6 +351,7 @@ export const Step3 = () => {
                 <div
                   key={el.id}
                   onMouseDown={e => handleElementMouseDown(e, el.id)}
+                  onClick={e => e.stopPropagation()}
                   className={cn(
                     'absolute cursor-move',
                     isSelected && 'outline outline-2 outline-primary outline-offset-1'
@@ -287,6 +412,20 @@ export const Step3 = () => {
                 </div>
               );
             })}
+
+            {/* Guías de snap */}
+            {snapGuide.x != null && (
+              <div
+                className="absolute top-0 bottom-0 w-0.5 bg-primary pointer-events-none z-10"
+                style={{ left: cmToPx(snapGuide.x) }}
+              />
+            )}
+            {snapGuide.y != null && (
+              <div
+                className="absolute left-0 right-0 h-0.5 bg-primary pointer-events-none z-10"
+                style={{ top: cmToPx(snapGuide.y) }}
+              />
+            )}
 
             {/* Empty state */}
             {canvasElements.length === 0 && (

@@ -1,12 +1,25 @@
-import { useState } from 'react';
+import { useState, useRef } from 'react';
 import PptxGenJS from 'pptxgenjs';
+import html2canvas from 'html2canvas';
 import { useApp } from '@/context/AppContext';
+import { SlidePreview } from '@/components/SlidePreview';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
-import { ChevronLeft, Download, Loader2, CheckCircle2, AlertCircle, FileText, Image as ImageIcon } from 'lucide-react';
+import { Input } from '@/components/ui/input';
+import { Label } from '@/components/ui/label';
+import {
+  Dialog,
+  DialogContent,
+  DialogHeader,
+  DialogTitle,
+} from '@/components/ui/dialog';
+import { ChevronLeft, Download, Loader2, CheckCircle2, AlertCircle, FileText, Image as ImageIcon, Eye } from 'lucide-react';
 
 // Convert hex color to RRGGBB
 const hexToRGB = (hex: string) => hex.replace('#', '');
+
+const sanitizeFileName = (name: string): string =>
+  name.replace(/[/\\:*?"<>|]/g, '_').trim() || 'presentacion';
 
 export const Step4 = () => {
   const {
@@ -17,9 +30,28 @@ export const Step4 = () => {
   const [status, setStatus] = useState<'idle' | 'generating' | 'done' | 'error'>('idle');
   const [progress, setProgress] = useState(0);
   const [errorMsg, setErrorMsg] = useState('');
+  const [fileName, setFileName] = useState('presentacion');
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewImage, setPreviewImage] = useState<string | null>(null);
+  const previewRef = useRef<HTMLDivElement>(null);
 
   const textElements = canvasElements.filter(el => el.type === 'text' || el.type === 'static');
   const imageElements = canvasElements.filter(el => el.type === 'image');
+
+  const handlePreview = async () => {
+    if (!previewRef.current || excelData.length === 0) return;
+    try {
+      const canvas = await html2canvas(previewRef.current, {
+        scale: 2,
+        useCORS: true,
+        backgroundColor: '#ffffff',
+      });
+      setPreviewImage(canvas.toDataURL('image/png'));
+      setPreviewOpen(true);
+    } catch (e) {
+      console.error('Error al capturar vista previa:', e);
+    }
+  };
 
   const handleGenerate = async () => {
     setStatus('generating');
@@ -102,7 +134,8 @@ export const Step4 = () => {
         await new Promise(r => setTimeout(r, 0));
       }
 
-      await pptx.writeFile({ fileName: `presentacion_${Date.now()}.pptx` });
+      const safeName = sanitizeFileName(fileName);
+      await pptx.writeFile({ fileName: `${safeName}.pptx` });
       setStatus('done');
     } catch (e) {
       console.error(e);
@@ -159,13 +192,35 @@ export const Step4 = () => {
         </div>
       </div>
 
-      {/* Generate button */}
+      {/* Nombre del archivo y botón generar */}
       <div className="space-y-4">
-        {status === 'idle' && (
-          <Button size="lg" onClick={handleGenerate} className="gap-2 w-full md:w-auto">
-            <Download className="w-5 h-5" /> Generar PowerPoint
+        <div className="space-y-2 max-w-xs">
+          <Label htmlFor="fileName" className="text-sm font-medium text-foreground">Nombre del archivo</Label>
+          <Input
+            id="fileName"
+            type="text"
+            value={fileName}
+            onChange={(e) => setFileName(e.target.value)}
+            placeholder="presentacion"
+            className="h-9"
+          />
+          <p className="text-xs text-muted-foreground">Sin extensión .pptx (caracteres no válidos se reemplazarán)</p>
+        </div>
+        <div className="flex flex-wrap gap-2">
+          <Button
+            variant="outline"
+            onClick={handlePreview}
+            disabled={excelData.length === 0 || canvasElements.length === 0}
+            className="gap-2"
+          >
+            <Eye className="w-4 h-4" /> Vista previa
           </Button>
-        )}
+          {status === 'idle' && (
+            <Button size="lg" onClick={handleGenerate} className="gap-2">
+              <Download className="w-5 h-5" /> Generar PowerPoint
+            </Button>
+          )}
+        </div>
 
         {status === 'generating' && (
           <div className="space-y-3">
@@ -213,6 +268,54 @@ export const Step4 = () => {
           </Button>
         )}
       </div>
+
+      {/* Vista previa: contenedor oculto para captura */}
+      <div className="fixed -left-[9999px] top-0" aria-hidden="true">
+        {excelData[0] && (
+          <SlidePreview
+            ref={previewRef}
+            dimensions={dimensions}
+            backgroundImage={backgroundImage}
+            canvasElements={canvasElements}
+            variables={variables}
+            rowData={excelData[0]}
+            uploadedImages={uploadedImages}
+          />
+        )}
+      </div>
+
+      <Dialog open={previewOpen} onOpenChange={setPreviewOpen}>
+        <DialogContent className="max-w-4xl max-h-[90vh] overflow-auto">
+          <DialogHeader>
+            <DialogTitle>Vista previa (primer registro)</DialogTitle>
+          </DialogHeader>
+          <div className="flex justify-center p-2">
+            {previewImage && (
+              <img
+                src={previewImage}
+                alt="Vista previa del slide"
+                className="max-w-full h-auto border rounded-lg"
+              />
+            )}
+          </div>
+          <div className="flex justify-end gap-2">
+            <Button
+              variant="outline"
+              size="sm"
+              onClick={() => {
+                if (previewImage) {
+                  const a = document.createElement('a');
+                  a.href = previewImage;
+                  a.download = 'vista_previa.png';
+                  a.click();
+                }
+              }}
+            >
+              Descargar imagen
+            </Button>
+          </div>
+        </DialogContent>
+      </Dialog>
 
       <div className="flex justify-start pt-4 border-t border-border">
         <Button variant="outline" onClick={() => setCurrentStep(3)} className="gap-2">

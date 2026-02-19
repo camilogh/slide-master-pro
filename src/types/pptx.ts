@@ -74,3 +74,22 @@ export const SLIDE_PRESETS = [
   { label: '16:9', width: 33.867, height: 19.05 },
   { label: '4:3', width: 25.4, height: 19.05 },
 ];
+
+/** Elemento de diseño serializado para JSON (usa variableName en lugar de variableId) */
+export interface DesignJsonElement {
+  variableName: string | null;
+  type: 'text' | 'image' | 'static';
+  label: string;
+  x: number;
+  y: number;
+  width: number;
+  height: number;
+  style?: TextStyle;
+  keepAspectRatio?: boolean | null;
+}
+
+export interface DesignJson {
+  version: number;
+  dimensions: SlideDimensions;
+  canvasElements: DesignJsonElement[];
+}
