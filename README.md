@@ -1,73 +1,89 @@
-# Welcome to your Lovable project
+# Slide Master Pro PPTX
 
-## Project info
+Aplicación de escritorio que genera presentaciones PowerPoint (.pptx) automáticamente a partir de una plantilla y datos en Excel. Ideal para crear múltiples diapositivas con el mismo diseño y contenido variable (nombres, títulos, imágenes, etc.).
 
-**URL**: https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID
+---
 
-## How can I edit this code?
+## Descargar e instalar
 
-There are several ways of editing your application.
+### Dónde descargar el instalador
 
-**Use Lovable**
+1. Ve a la página de **Lanzamientos (Releases)** del proyecto:
+   - **En GitHub:** Entra al repositorio y haz clic en **"Releases"** en el menú de la derecha, o visita:
+   - [https://github.com/camilogh/slide-master-pro/releases](https://github.com/camilogh/slide-master-pro/releases)
+2. En la última versión, descarga el archivo **"Slide Master Pro PPTX Setup X.X.X.exe"** (donde X.X.X es el número de versión).
 
-Simply visit the [Lovable Project](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and start prompting.
+### Requisitos
 
-Changes made via Lovable will be committed automatically to this repo.
+- Windows 10 o superior
+- No necesitas instalar Node.js ni ningún programa adicional
 
-**Use your preferred IDE**
+### Instalación
 
-If you want to work locally using your own IDE, you can clone this repo and push changes. Pushed changes will also be reflected in Lovable.
+1. Ejecuta el archivo **Slide Master Pro PPTX Setup X.X.X.exe** que descargaste.
+2. Sigue las instrucciones del asistente de instalación.
+3. Al terminar, la aplicación quedará instalada y podrás abrirla desde el menú Inicio de Windows.
 
-The only requirement is having Node.js & npm installed - [install with nvm](https://github.com/nvm-sh/nvm#installing-and-updating)
+---
 
-Follow these steps:
+## Cómo usar la aplicación
 
-```sh
-# Step 1: Clone the repository using the project's Git URL.
-git clone <YOUR_GIT_URL>
+La aplicación funciona en **4 pasos** que aparecen en la barra superior:
 
-# Step 2: Navigate to the project directory.
-cd <YOUR_PROJECT_NAME>
+### Paso 1: Dimensiones y fondo
 
-# Step 3: Install the necessary dependencies.
-npm i
+1. Elige el tamaño de las diapositivas (16:9, 4:3, etc.).
+2. Sube una imagen de fondo para todas las diapositivas (por ejemplo, un logo o diseño corporativo).
+3. Haz clic en **Siguiente**.
 
-# Step 4: Start the development server with auto-reloading and an instant preview.
-npm run dev
-```
+### Paso 2: Datos Excel
 
-**Edit a file directly in GitHub**
+1. Sube un archivo **Excel (.xlsx)** con los datos. La primera fila debe tener los nombres de las columnas (por ejemplo: Nombre, Cargo, Foto).
+2. Cada fila de datos generará una diapositiva.
+3. Si usas imágenes en alguna columna (por ejemplo, fotos de personas), sube esas imágenes en la zona indicada. Los nombres de los archivos deben coincidir con los valores que aparecen en la columna correspondiente del Excel.
+4. Revisa que las columnas de texto e imagen estén bien detectadas.
+5. Haz clic en **Siguiente**.
 
-- Navigate to the desired file(s).
-- Click the "Edit" button (pencil icon) at the top right of the file view.
-- Make your changes and commit the changes.
+### Paso 3: Diseño
 
-**Use GitHub Codespaces**
+1. Verás una vista previa del fondo con un lienzo encima.
+2. Arrastra elementos desde el panel izquierdo hacia el lienzo:
+   - **Variables de texto:** Para mostrar datos del Excel (nombres, cargos, etc.).
+   - **Variables de imagen:** Para mostrar imágenes según los datos del Excel.
+   - **Texto estático:** Para texto fijo que no cambia (títulos, subtítulos, etc.).
+3. Coloca cada elemento donde quieras, ajusta el tamaño y el estilo (tipo de letra, color, alineación).
+4. Puedes guardar el diseño en un archivo .json para reutilizarlo más adelante.
+5. Haz clic en **Siguiente**.
 
-- Navigate to the main page of your repository.
-- Click on the "Code" button (green button) near the top right.
-- Select the "Codespaces" tab.
-- Click on "New codespace" to launch a new Codespace environment.
-- Edit files directly within the Codespace and commit and push your changes once you're done.
+### Paso 4: Generar PPTX
 
-## What technologies are used for this project?
+1. Revisa el resumen (cantidad de diapositivas, variables, etc.).
+2. Escribe el nombre con el que quieres guardar el archivo.
+3. Haz clic en **Generar PPTX**.
+4. Espera a que termine el proceso.
+5. Se descargará automáticamente el archivo .pptx. Ábrelo con PowerPoint o cualquier programa compatible.
 
-This project is built with:
+---
 
-- Vite
-- TypeScript
-- React
-- shadcn-ui
-- Tailwind CSS
+## Resumen rápido
 
-## How can I deploy this project?
+| Paso | Qué haces |
+|------|-----------|
+| 1 | Subes el fondo y eliges el tamaño |
+| 2 | Subes el Excel con los datos y las imágenes (si aplica) |
+| 3 | Diseñas la plantilla arrastrando texto e imágenes al lienzo |
+| 4 | Generas y descargas el PowerPoint |
 
-Simply open [Lovable](https://lovable.dev/projects/REPLACE_WITH_PROJECT_ID) and click on Share -> Publish.
+---
 
-## Can I connect a custom domain to my Lovable project?
+## Para desarrolladores
 
-Yes, you can!
+Si quieres modificar el código o ejecutar el proyecto en modo desarrollo:
 
-To connect a domain, navigate to Project > Settings > Domains and click Connect Domain.
+- **Requisitos:** Node.js 18+ y npm
+- **Instalar dependencias:** `npm install`
+- **Modo desarrollo (web):** `npm run dev`
+- **Modo desarrollo (Electron):** `npm run electron:dev`
+- **Generar el .exe:** `npm run electron:build`
 
-Read more here: [Setting up a custom domain](https://docs.lovable.dev/features/custom-domain#custom-domain)
+El ejecutable se genera en la carpeta `release/`.

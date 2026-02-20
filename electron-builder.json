@@ -1,0 +1,14 @@
+{
+  "appId": "com.slide-master-pro.pptx",
+  "productName": "Slide Master Pro PPTX",
+  "directories": {
+    "output": "release"
+  },
+  "files": ["dist/**/*", "electron/**/*"],
+  "win": {
+    "target": "nsis"
+  },
+  "nsis": {
+    "oneClick": true
+  }
+}
