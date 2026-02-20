@@ -1,7 +1,6 @@
 import { forwardRef } from 'react';
 import type { CanvasElement, Variable, SlideDimensions } from '@/types/pptx';
-
-const CANVAS_PX = 900;
+import { CanvasElementView, CANVAS_PX } from '@/components/CanvasElementView';
 
 interface SlidePreviewProps {
   dimensions: SlideDimensions;
@@ -12,7 +11,7 @@ interface SlidePreviewProps {
   uploadedImages: Record<string, string>;
 }
 
-/** Renderiza el slide con datos del primer registro para captura con html2canvas */
+/** Renderiza el slide con la misma lógica que el editor (Paso 3) para captura con html2canvas */
 export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
   ({ dimensions, backgroundImage, canvasElements, variables, rowData, uploadedImages }, ref) => {
     const scale = CANVAS_PX / dimensions.width;
@@ -39,97 +38,30 @@ export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
           />
         )}
         {canvasElements.map((el) => {
-          const fontSizePt = (el.style?.fontSize ?? 18) * (scale / 28.35);
-          if (el.type === 'static') {
-            const align = el.style?.align ?? 'left';
-            return (
-              <div
-                key={el.id}
-                style={{
-                  position: 'absolute',
-                  left: cmToPx(el.x),
-                  top: cmToPx(el.y),
-                  width: cmToPx(el.width),
-                  height: cmToPx(el.height),
-                  fontFamily: el.style?.fontFamily ?? 'Arial',
-                  fontSize: fontSizePt,
-                  color: el.style?.color ?? '#000000',
-                  textAlign: align,
-                  fontWeight: el.style?.bold ? 'bold' : 'normal',
-                  fontStyle: el.style?.italic ? 'italic' : 'normal',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ width: '100%', minWidth: 0, textAlign: align }}>{el.label}</span>
-              </div>
-            );
-          }
+          let textContent = el.label;
+          let imageData: string | null = null;
+
           if (el.type === 'text') {
             const variable = variables.find((v) => v.id === el.variableId);
-            const value = variable ? rowData[variable.name] ?? '' : '';
-            const align = el.style?.align ?? 'left';
-            return (
-              <div
-                key={el.id}
-                style={{
-                  position: 'absolute',
-                  left: cmToPx(el.x),
-                  top: cmToPx(el.y),
-                  width: cmToPx(el.width),
-                  height: cmToPx(el.height),
-                  fontFamily: el.style?.fontFamily ?? 'Arial',
-                  fontSize: fontSizePt,
-                  color: el.style?.color ?? '#000000',
-                  textAlign: align,
-                  fontWeight: el.style?.bold ? 'bold' : 'normal',
-                  fontStyle: el.style?.italic ? 'italic' : 'normal',
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                }}
-              >
-                <span style={{ width: '100%', minWidth: 0, textAlign: align }}>{value}</span>
-              </div>
-            );
-          }
-          if (el.type === 'image') {
+            textContent = variable ? rowData[variable.name] ?? '' : '';
+          } else if (el.type === 'image') {
             const variable = variables.find((v) => v.id === el.variableId);
             const filename = variable ? rowData[variable.name] ?? '' : '';
-            const imageData = uploadedImages[filename];
-            return (
-              <div
-                key={el.id}
-                style={{
-                  position: 'absolute',
-                  left: cmToPx(el.x),
-                  top: cmToPx(el.y),
-                  width: cmToPx(el.width),
-                  height: cmToPx(el.height),
-                  overflow: 'hidden',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                }}
-              >
-                {imageData ? (
-                  <img
-                    src={imageData}
-                    alt=""
-                    style={{
-                      maxWidth: '100%',
-                      maxHeight: '100%',
-                      objectFit: 'contain',
-                    }}
-                  />
-                ) : (
-                  <span style={{ fontSize: 12, color: '#999' }}>{el.label}</span>
-                )}
-              </div>
-            );
+            imageData = filename ? uploadedImages[filename] ?? null : null;
+          } else if (el.type === 'static') {
+            textContent = el.label;
           }
-          return null;
+
+          return (
+            <CanvasElementView
+              key={el.id}
+              el={el}
+              textContent={textContent}
+              imageData={imageData}
+              scale={scale}
+              cmToPx={cmToPx}
+            />
+          );
         })}
       </div>
     );

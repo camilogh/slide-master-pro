@@ -1,6 +1,7 @@
 import { useState, useRef, useCallback } from 'react';
 import { useApp } from '@/context/AppContext';
 import { CanvasElement, Variable, DEFAULT_TEXT_STYLE, TextStyle, TextAlign } from '@/types/pptx';
+import { CanvasElementView, CANVAS_PX } from '@/components/CanvasElementView';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Label } from '@/components/ui/label';
@@ -14,8 +15,6 @@ import { exportDesignToJson, importDesignFromJson, isValidDesignJson } from '@/l
 import { getSnapPoints, applySnapPosition } from '@/lib/snap';
 import { cn } from '@/lib/utils';
 
-// Canvas pixel dimensions for display
-const CANVAS_PX = 900;
 const SNAP_THRESHOLD_CM = 0.3;
 
 export const Step3 = () => {
@@ -346,70 +345,37 @@ export const Step3 = () => {
             {canvasElements.map(el => {
               const isSelected = el.id === selectedId;
               const previewImg = getPreviewImage(el);
+              const textContent = el.type === 'static' ? el.label : el.label;
 
               return (
-                <div
+                <CanvasElementView
                   key={el.id}
+                  el={el}
+                  textContent={textContent}
+                  imageData={previewImg}
+                  scale={scale}
+                  cmToPx={cmToPx}
+                  isSelected={isSelected}
+                  isEditor
                   onMouseDown={e => handleElementMouseDown(e, el.id)}
                   onClick={e => e.stopPropagation()}
-                  className={cn(
-                    'absolute cursor-move',
-                    isSelected && 'outline outline-2 outline-primary outline-offset-1'
+                  renderResizeHandles={targetEl => (
+                    ['se', 'sw', 'ne', 'nw'].map(corner => (
+                      <div
+                        key={corner}
+                        onMouseDown={e => handleResizeMouseDown(e, targetEl.id, corner)}
+                        className="absolute w-3 h-3 bg-primary border-2 border-background rounded-sm cursor-nwse-resize"
+                        style={{
+                          right: corner.includes('e') ? -6 : undefined,
+                          left: corner.includes('w') ? -6 : undefined,
+                          bottom: corner.includes('s') ? -6 : undefined,
+                          top: corner.includes('n') ? -6 : undefined,
+                          cursor: corner === 'nw' || corner === 'se' ? 'nwse-resize' : 'nesw-resize',
+                        }}
+                      />
+                    ))
                   )}
-                  style={{
-                    left: cmToPx(el.x),
-                    top: cmToPx(el.y),
-                    width: cmToPx(el.width),
-                    height: cmToPx(el.height),
-                  }}
-                >
-                  {el.type === 'image' ? (
-                    previewImg ? (
-                      <img src={previewImg} alt={el.label} className="w-full h-full object-contain" />
-                    ) : (
-                      <div className="w-full h-full bg-muted/60 border border-dashed border-border flex items-center justify-center rounded">
-                        <span className="text-xs text-muted-foreground text-center px-1 truncate">{el.label}</span>
-                      </div>
-                    )
-                  ) : (
-                    <div
-                      className="w-full h-full flex items-center overflow-hidden rounded px-1"
-                      style={{
-                        fontFamily: el.style?.fontFamily,
-                        fontSize: (el.style?.fontSize ?? 18) * (scale / 28.35),
-                        color: el.style?.color,
-                        textAlign: el.style?.align ?? 'left',
-                        fontWeight: el.style?.bold ? 'bold' : 'normal',
-                        fontStyle: el.style?.italic ? 'italic' : 'normal',
-                        backgroundColor: isSelected ? 'hsl(var(--primary)/0.08)' : 'transparent',
-                      }}
-                    >
-                      {el.type === 'static' ? (
-                        <span className="block w-full min-w-0 whitespace-pre-wrap break-words" style={{ textAlign: el.style?.align ?? 'left' }}>{el.label}</span>
-                      ) : (
-                        <span className="block w-full min-w-0 opacity-75 whitespace-nowrap overflow-hidden text-ellipsis" style={{ textAlign: el.style?.align ?? 'left' }}>
-                          {el.label}
-                        </span>
-                      )}
-                    </div>
-                  )}
-
-                  {/* Resize handles */}
-                  {isSelected && ['se', 'sw', 'ne', 'nw'].map(corner => (
-                    <div
-                      key={corner}
-                      onMouseDown={e => handleResizeMouseDown(e, el.id, corner)}
-                      className="absolute w-3 h-3 bg-primary border-2 border-background rounded-sm cursor-nwse-resize"
-                      style={{
-                        right: corner.includes('e') ? -6 : undefined,
-                        left: corner.includes('w') ? -6 : undefined,
-                        bottom: corner.includes('s') ? -6 : undefined,
-                        top: corner.includes('n') ? -6 : undefined,
-                        cursor: corner === 'nw' || corner === 'se' ? 'nwse-resize' : 'nesw-resize',
-                      }}
-                    />
-                  ))}
-                </div>
+                />
               );
             })}
 

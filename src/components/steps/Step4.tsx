@@ -41,11 +41,20 @@ export const Step4 = () => {
   const handlePreview = async () => {
     if (!previewRef.current || excelData.length === 0) return;
     try {
-      const canvas = await html2canvas(previewRef.current, {
+      const el = previewRef.current;
+      const clone = el.cloneNode(true) as HTMLElement;
+      clone.style.position = 'fixed';
+      clone.style.left = '0';
+      clone.style.top = `${window.innerHeight}px`;
+      clone.style.zIndex = '-1';
+      document.body.appendChild(clone);
+      await new Promise((r) => requestAnimationFrame(r));
+      const canvas = await html2canvas(clone, {
         scale: 2,
         useCORS: true,
         backgroundColor: '#ffffff',
       });
+      document.body.removeChild(clone);
       setPreviewImage(canvas.toDataURL('image/png'));
       setPreviewOpen(true);
     } catch (e) {
@@ -98,6 +107,7 @@ export const Step4 = () => {
               fontSize: el.style?.fontSize ?? 18,
               color: hexToRGB(el.style?.color ?? '#000000'),
               align: el.style?.align ?? 'left',
+              valign: 'top',
               bold: el.style?.bold ?? false,
               italic: el.style?.italic ?? false,
               wrap: true,
@@ -113,6 +123,7 @@ export const Step4 = () => {
               fontSize: el.style?.fontSize ?? 18,
               color: hexToRGB(el.style?.color ?? '#000000'),
               align: el.style?.align ?? 'left',
+              valign: 'top',
               bold: el.style?.bold ?? false,
               italic: el.style?.italic ?? false,
               wrap: true,
@@ -269,7 +280,7 @@ export const Step4 = () => {
         )}
       </div>
 
-      {/* Vista previa: contenedor oculto para captura */}
+      {/* Vista previa: contenedor oculto para captura con html2canvas */}
       <div className="fixed -left-[9999px] top-0" aria-hidden="true">
         {excelData[0] && (
           <SlidePreview
