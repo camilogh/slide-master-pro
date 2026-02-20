@@ -1,12 +1,31 @@
-import { useRef, useState } from 'react';
+import { useRef, useState, useCallback } from 'react';
 import * as XLSX from 'xlsx';
 import { useApp } from '@/context/AppContext';
 import { Variable } from '@/types/pptx';
 import { Button } from '@/components/ui/button';
 import { Card, CardContent } from '@/components/ui/card';
 import { Table, TableBody, TableCell, TableHead, TableHeader, TableRow } from '@/components/ui/table';
+import { Label } from '@/components/ui/label';
 import { Upload, FileSpreadsheet, Images, ChevronRight, ChevronLeft, FileText, Image as ImageIcon } from 'lucide-react';
 import { cn } from '@/lib/utils';
+
+/** Convierte fila de valores en headers únicos (__EMPTY para celdas vacías, como SheetJS) */
+function toHeaders(row: unknown[]): string[] {
+  const seen = new Map<string, number>();
+  return row.map((cell, i) => {
+    const raw = cell != null && String(cell).trim() !== '' ? String(cell) : null;
+    const base = raw ?? '__EMPTY';
+    let key = base;
+    if (seen.has(base)) {
+      const n = seen.get(base)! + 1;
+      seen.set(base, n);
+      key = `${base}_${n}`;
+    } else {
+      seen.set(base, 0);
+    }
+    return key;
+  });
+}
 
 export const Step2 = () => {
   const {
@@ -19,6 +38,38 @@ export const Step2 = () => {
   const imagesInputRef = useRef<HTMLInputElement>(null);
   const [dragOverExcel, setDragOverExcel] = useState(false);
   const [dragOverImages, setDragOverImages] = useState(false);
+  const [rawSheetRows, setRawSheetRows] = useState<unknown[][]>([]);
+  const [headerRow, setHeaderRow] = useState(1);
+
+  const applyHeaderRow = useCallback((rows: unknown[][], rowNum: number) => {
+    if (rows.length === 0) return;
+    const idx = Math.max(0, Math.min(rowNum - 1, rows.length - 1));
+    const headerRowData = rows[idx];
+    const maxCols = Math.max(...rows.map(r => (Array.isArray(r) ? r : []).length));
+    const headerValues = Array.isArray(headerRowData)
+      ? [...headerRowData]
+      : [];
+    while (headerValues.length < maxCols) headerValues.push('');
+    const headers = toHeaders(headerValues);
+    const dataRows = rows.slice(idx + 1);
+    const vars: Variable[] = headers.map(h => {
+      const existing = variables.find(v => v.name === h);
+      return {
+        id: existing?.id ?? crypto.randomUUID(),
+        name: h,
+        type: existing?.type ?? 'text',
+      };
+    });
+    const data: Record<string, string>[] = dataRows.map(row => {
+      const arr = Array.isArray(row) ? row : [];
+      const obj: Record<string, string> = {};
+      headers.forEach((h, i) => {
+        obj[h] = arr[i] != null ? String(arr[i]) : '';
+      });
+      return obj;
+    });
+    setExcelData(data, vars);
+  }, [setExcelData, variables]);
 
   const processExcel = (file: File) => {
     const reader = new FileReader();
@@ -26,15 +77,11 @@ export const Step2 = () => {
       const data = new Uint8Array(e.target?.result as ArrayBuffer);
       const workbook = XLSX.read(data, { type: 'array' });
       const sheet = workbook.Sheets[workbook.SheetNames[0]];
-      const rows = XLSX.utils.sheet_to_json<Record<string, string>>(sheet, { defval: '' });
+      const rows = XLSX.utils.sheet_to_json<unknown[]>(sheet, { header: 1, defval: '' });
       if (rows.length === 0) return;
-      const headers = Object.keys(rows[0]);
-      const vars: Variable[] = headers.map(h => ({
-        id: crypto.randomUUID(),
-        name: h,
-        type: 'text',
-      }));
-      setExcelData(rows, vars);
+      setRawSheetRows(rows);
+      setHeaderRow(1);
+      applyHeaderRow(rows, 1);
     };
     reader.readAsArrayBuffer(file);
   };
@@ -113,6 +160,32 @@ export const Step2 = () => {
           className="hidden"
           onChange={e => { const f = e.target.files?.[0]; if (f) processExcel(f); }}
         />
+
+        {/* Selector de fila de encabezados */}
+        {rawSheetRows.length > 0 && (
+          <div className="flex items-center gap-3 flex-wrap">
+            <Label htmlFor="header-row" className="text-sm text-foreground">
+              Fila que contiene los encabezados de la tabla:
+            </Label>
+            <select
+              id="header-row"
+              value={headerRow}
+              onChange={e => {
+                const n = parseInt(e.target.value, 10);
+                setHeaderRow(n);
+                applyHeaderRow(rawSheetRows, n);
+              }}
+              className="h-9 rounded-md border border-input bg-background px-3 text-sm"
+            >
+              {Array.from({ length: Math.min(rawSheetRows.length, 100) }, (_, i) => (
+                <option key={i} value={i + 1}>Fila {i + 1}</option>
+              ))}
+            </select>
+            <span className="text-xs text-muted-foreground">
+              Los datos se tomarán a partir de la fila {headerRow + 1}
+            </span>
+          </div>
+        )}
       </div>
 
       {/* Variables detected */}

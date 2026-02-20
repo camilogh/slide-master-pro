@@ -251,10 +251,10 @@ export const Step3 = () => {
   return (
     <div className="flex flex-col gap-4">
       <div className="flex gap-4" style={{ minHeight: `${canvasHeightPx + 40}px` }}>
-        {/* Left panel: variables */}
-        <div className="w-56 shrink-0 flex flex-col gap-3">
-          <h3 className="text-sm font-semibold text-foreground">Variables</h3>
-          <ScrollArea className="flex-1">
+        {/* Left panel: variables (scroll independiente) */}
+        <div className="w-56 shrink-0 flex flex-col gap-3 min-h-0 max-h-[calc(100vh-10rem)]">
+          <h3 className="text-sm font-semibold text-foreground shrink-0">Variables</h3>
+          <ScrollArea className="flex-1 min-h-0 overflow-y-auto">
             <div className="flex flex-col gap-2 pr-1">
               {variables.map(v => (
                 <div
@@ -378,16 +378,16 @@ export const Step3 = () => {
                         fontFamily: el.style?.fontFamily,
                         fontSize: (el.style?.fontSize ?? 18) * (scale / 28.35),
                         color: el.style?.color,
-                        textAlign: el.style?.align,
+                        textAlign: el.style?.align ?? 'left',
                         fontWeight: el.style?.bold ? 'bold' : 'normal',
                         fontStyle: el.style?.italic ? 'italic' : 'normal',
                         backgroundColor: isSelected ? 'hsl(var(--primary)/0.08)' : 'transparent',
                       }}
                     >
                       {el.type === 'static' ? (
-                        <span className="w-full whitespace-pre-wrap break-words">{el.label}</span>
+                        <span className="block w-full min-w-0 whitespace-pre-wrap break-words" style={{ textAlign: el.style?.align ?? 'left' }}>{el.label}</span>
                       ) : (
-                        <span className="w-full opacity-75 whitespace-nowrap overflow-hidden text-ellipsis">
+                        <span className="block w-full min-w-0 opacity-75 whitespace-nowrap overflow-hidden text-ellipsis" style={{ textAlign: el.style?.align ?? 'left' }}>
                           {el.label}
                         </span>
                       )}
@@ -523,10 +523,14 @@ export const Step3 = () => {
                     {(['left', 'center', 'right'] as TextAlign[]).map(a => (
                       <button
                         key={a}
-                        onClick={() => updateCanvasElement(selectedEl.id, { style: { ...selectedEl.style!, align: a } })}
+                        type="button"
+                        onClick={() => {
+                          const prev = selectedEl.style ?? { ...DEFAULT_TEXT_STYLE };
+                          updateCanvasElement(selectedEl.id, { style: { ...prev, align: a } });
+                        }}
                         className={cn(
                           'flex-1 h-8 rounded-md border flex items-center justify-center transition-colors',
-                          selectedEl.style.align === a
+                          (selectedEl.style?.align ?? 'left') === a
                             ? 'bg-primary text-primary-foreground border-primary'
                             : 'border-border hover:border-primary/50'
                         )}
@@ -540,6 +544,7 @@ export const Step3 = () => {
 
                   <div className="flex gap-2">
                     <button
+                      type="button"
                       onClick={() => updateCanvasElement(selectedEl.id, { style: { ...selectedEl.style!, bold: !selectedEl.style!.bold } })}
                       className={cn(
                         'flex-1 h-8 rounded-md border flex items-center justify-center gap-1 text-sm transition-colors',
@@ -551,6 +556,7 @@ export const Step3 = () => {
                       <Bold className="w-4 h-4" /> Negrita
                     </button>
                     <button
+                      type="button"
                       onClick={() => updateCanvasElement(selectedEl.id, { style: { ...selectedEl.style!, italic: !selectedEl.style!.italic } })}
                       className={cn(
                         'flex-1 h-8 rounded-md border flex items-center justify-center gap-1 text-sm transition-colors',

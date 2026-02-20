@@ -41,6 +41,7 @@ export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
         {canvasElements.map((el) => {
           const fontSizePt = (el.style?.fontSize ?? 18) * (scale / 28.35);
           if (el.type === 'static') {
+            const align = el.style?.align ?? 'left';
             return (
               <div
                 key={el.id}
@@ -53,7 +54,7 @@ export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
                   fontFamily: el.style?.fontFamily ?? 'Arial',
                   fontSize: fontSizePt,
                   color: el.style?.color ?? '#000000',
-                  textAlign: el.style?.align ?? 'left',
+                  textAlign: align,
                   fontWeight: el.style?.bold ? 'bold' : 'normal',
                   fontStyle: el.style?.italic ? 'italic' : 'normal',
                   overflow: 'hidden',
@@ -61,13 +62,14 @@ export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
                   alignItems: 'center',
                 }}
               >
-                {el.label}
+                <span style={{ width: '100%', minWidth: 0, textAlign: align }}>{el.label}</span>
               </div>
             );
           }
           if (el.type === 'text') {
             const variable = variables.find((v) => v.id === el.variableId);
             const value = variable ? rowData[variable.name] ?? '' : '';
+            const align = el.style?.align ?? 'left';
             return (
               <div
                 key={el.id}
@@ -80,7 +82,7 @@ export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
                   fontFamily: el.style?.fontFamily ?? 'Arial',
                   fontSize: fontSizePt,
                   color: el.style?.color ?? '#000000',
-                  textAlign: el.style?.align ?? 'left',
+                  textAlign: align,
                   fontWeight: el.style?.bold ? 'bold' : 'normal',
                   fontStyle: el.style?.italic ? 'italic' : 'normal',
                   overflow: 'hidden',
@@ -88,7 +90,7 @@ export const SlidePreview = forwardRef<HTMLDivElement, SlidePreviewProps>(
                   alignItems: 'center',
                 }}
               >
-                {value}
+                <span style={{ width: '100%', minWidth: 0, textAlign: align }}>{value}</span>
               </div>
             );
           }
